@@ -7,7 +7,7 @@ pipeline {
     }
 
     environment {
-        REPO_URL = 'https://github.com/usuario/mi-repo-terraform.git'
+        REPO_URL = 'https://github.com/gastonbarbaccia/kali-web-tf.git'
         BRANCH = 'main'
     }
 
