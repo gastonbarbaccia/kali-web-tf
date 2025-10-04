@@ -1,0 +1,71 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'AWS_ACCESS_KEY', description: 'Tu AWS Access Key')
+        password(name: 'AWS_SECRET_KEY', description: 'Tu AWS Secret Key')
+    }
+
+    environment {
+        REPO_URL = 'https://github.com/usuario/mi-repo-terraform.git'
+        BRANCH = 'main'
+    }
+
+    stages {
+        stage('Clonar repositorio') {
+            steps {
+                git branch: "${BRANCH}", url: "${REPO_URL}"
+            }
+        }
+
+        stage('Inicializar Terraform') {
+            steps {
+                sh 'terraform init'
+            }
+        }
+
+        stage('Validar Terraform') {
+            steps {
+                sh 'terraform validate'
+            }
+        }
+
+        stage('Planificar cambios') {
+            steps {
+                withEnv([
+                    "TF_VAR_aws_access_key=${params.AWS_ACCESS_KEY}",
+                    "TF_VAR_aws_secret_key=${params.AWS_SECRET_KEY}"
+                ]) {
+                    sh 'terraform plan -out=tfplan'
+                }
+            }
+        }
+
+        stage('Aplicar cambios') {
+            steps {
+                input message: '¿Deseas aplicar los cambios?', ok: 'Sí, aplicar'
+                withEnv([
+                    "TF_VAR_aws_access_key=${params.AWS_ACCESS_KEY}",
+                    "TF_VAR_aws_secret_key=${params.AWS_SECRET_KEY}"
+                ]) {
+                    sh 'terraform apply -auto-approve tfplan'
+                }
+            }
+        }
+
+        stage('Mostrar URL de la instancia') {
+            steps {
+                script {
+                    def output = sh(script: 'terraform output -raw instance_url', returnStdout: true).trim()
+                    echo "✅ La instancia está disponible en: ${output}"
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Pipeline finalizado.'
+        }
+    }
+}
