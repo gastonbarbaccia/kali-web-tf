@@ -58,8 +58,10 @@ pipeline {
                 """
             }
         }
-        always {
-            echo 'Proceso terminado.'
+        post {
+            always {
+                echo 'Proceso terminado.'
+            }
         }
     }
 }
