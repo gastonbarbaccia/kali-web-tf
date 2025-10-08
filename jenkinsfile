@@ -58,13 +58,8 @@ pipeline {
                 """
             }
         }
-        stage('Credenciales de acceso a Defect Dojo') {
-            steps {
-                sh """
-                    ssh -o StrictHostKeyChecking=no -i ${env.PEM_PATH} ubuntu@${env.INSTANCE_IP} \
-                    'cd /home/ubuntu/django-DefectDojo && sudo docker-compose logs initializer | grep "Admin password:"'
-                """
-            }
+        always {
+            echo 'Proceso terminado.'
         }
     }
 }
