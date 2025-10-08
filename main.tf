@@ -64,8 +64,8 @@ resource "aws_instance" "ec2" {
   associate_public_ip_address = true
 
   root_block_device {
-    volume_size = 30         # Cambiá este valor según lo que necesites (GB)
-    volume_type = "gp3"      # O "gp2", "io1", etc.
+    volume_size = 30    # Cambiá este valor según lo que necesites (GB)
+    volume_type = "gp3" # O "gp2", "io1", etc.
   }
 
   tags = {
