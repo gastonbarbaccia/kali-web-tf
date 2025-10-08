@@ -1,29 +1,50 @@
-provider "aws" {
-  region     = "us-east-1"
-  access_key = var.aws_access_key
-  secret_key = var.aws_secret_key
+terraform {
+  required_version = ">= 1.0.0"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
 }
 
-variable "aws_access_key" {}
-variable "aws_secret_key" {}
+variable "aws_region" {}
+variable "instance_name" {}
+variable "instance_type" {}
 
+provider "aws" {
+  region = var.aws_region
+}
 
-resource "aws_security_group" "ec2_sg" {
-  name_prefix = "ec2-sg-"
-  description = "Security group for EC2 instance"
+# Generar par de llaves SSH
+resource "tls_private_key" "ssh_key" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+# Guardar la llave privada localmente
+resource "local_file" "private_key" {
+  content         = tls_private_key.ssh_key.private_key_pem
+  filename        = "${path.module}/${var.instance_name}.pem"
+  file_permission = "0400"
+}
+
+# Crear key pair en AWS
+resource "aws_key_pair" "generated_key" {
+  key_name   = "${var.instance_name}-key"
+  public_key = tls_private_key.ssh_key.public_key_openssh
+}
+
+# Security group abierto (ajustar según necesidad)
+resource "aws_security_group" "open_all" {
+  name        = "${var.instance_name}-sg"
+  description = "Open all ports"
 
   ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] # Acceso SSH público (considera restringirlo por seguridad)
-  }
-
-  ingress {
-    from_port   = 6080
-    to_port     = 6080
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] # Acceso público al puerto 6080
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
@@ -34,34 +55,23 @@ resource "aws_security_group" "ec2_sg" {
   }
 }
 
-resource "aws_instance" "ec2_instance" {
-  ami           = "ami-04b4f1a9cf54c11d0" # Reemplaza con la AMI deseada
-  instance_type = "t2.medium" # Cambia según necesidades
-  security_groups = [aws_security_group.ec2_sg.name]
-
-  root_block_device {
-    volume_size = 30 # Tamaño del disco en GB
-    volume_type = "gp2" # Tipo de volumen (puede cambiarse según necesidad)
-  }
-
-    user_data = <<-EOF
-        #!/bin/bash
-        exec > /var/log/user_data.log 2>&1
-        set -x
-        sudo apt update -y
-        sudo apt upgrade -y
-        sudo apt install -y docker.io git
-        sudo systemctl enable docker
-        sudo systemctl start docker
-        sudo docker run -d -p 6080:6080 --privileged --name kali-vnc gastonbarbaccia/kali-web-vnc
-    EOF
+# Instancia EC2 Ubuntu
+resource "aws_instance" "ec2" {
+  ami                         = "ami-08c40ec9ead489470" # Ubuntu 22.04 us-east-1
+  instance_type               = var.instance_type
+  key_name                    = aws_key_pair.generated_key.key_name
+  security_groups             = [aws_security_group.open_all.name]
+  associate_public_ip_address = true
 
   tags = {
-    Name = "Kali-web"
+    Name = var.instance_name
   }
 }
 
-output "instance_url" {
-  value = "http://${aws_instance.ec2_instance.public_ip}:6080"
-  description = "URL de acceso a la aplicación en el puerto 6080"
+output "instance_ip" {
+  value = aws_instance.ec2.public_ip
+}
+
+output "private_key_path" {
+  value = local_file.private_key.filename
 }
