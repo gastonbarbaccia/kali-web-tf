@@ -54,10 +54,10 @@ pipeline {
             steps {
                 sh """
                     ssh -o StrictHostKeyChecking=no -i ${env.PEM_PATH} ubuntu@${env.INSTANCE_IP} \
-                    'sudo apt-get update -y && sudo apt-get upgrade -y && sudo apt-get install -y docker.io docker-compose git && docker run -d -p 6080:6080 --privileged --name kali-vnc gastonbarbaccia/kali-web-vnc'
+                    'sudo apt-get update -y && sudo apt-get upgrade -y && sudo apt-get install -y docker.io docker-compose git && sudo docker run -d -p 6080:6080 --privileged --name kali-vnc gastonbarbaccia/kali-web-vnc'
                 """
             }
-        }
+        }Restart
     }
     post {
             always {
